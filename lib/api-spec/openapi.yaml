@@ -1,0 +1,907 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: Academic Resource Management System API
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: auth
+    description: Authentication operations
+  - name: files
+    description: File resource operations
+  - name: bookmarks
+    description: Bookmark operations
+  - name: announcements
+    description: Announcement operations
+  - name: analytics
+    description: Analytics and statistics
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      description: Returns server health status
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /auth/register:
+    post:
+      operationId: register
+      tags: [auth]
+      summary: Register a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterBody"
+      responses:
+        "201":
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Email already in use
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginBody"
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      summary: Get current user
+      responses:
+        "200":
+          description: Current user info
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /files:
+    get:
+      operationId: listFiles
+      tags: [files]
+      summary: List files with optional filtering
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: ["string", "null"]
+        - name: branch
+          in: query
+          schema:
+            type: ["string", "null"]
+        - name: year
+          in: query
+          schema:
+            type: ["string", "null"]
+        - name: semester
+          in: query
+          schema:
+            type: ["string", "null"]
+        - name: subject
+          in: query
+          schema:
+            type: ["string", "null"]
+        - name: fileType
+          in: query
+          schema:
+            type: ["string", "null"]
+        - name: sortBy
+          in: query
+          schema:
+            type: ["string", "null"]
+        - name: page
+          in: query
+          schema:
+            type: ["integer", "null"]
+        - name: limit
+          in: query
+          schema:
+            type: ["integer", "null"]
+      responses:
+        "200":
+          description: List of files with pagination
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FileListResponse"
+
+    post:
+      operationId: createFile
+      tags: [files]
+      summary: Create a new file entry (admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateFileBody"
+      responses:
+        "201":
+          description: File created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/File"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Admin access required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /files/{id}:
+    get:
+      operationId: getFile
+      tags: [files]
+      summary: Get a single file by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: File details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/File"
+        "404":
+          description: File not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+    patch:
+      operationId: updateFile
+      tags: [files]
+      summary: Update a file (admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateFileBody"
+      responses:
+        "200":
+          description: File updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/File"
+        "404":
+          description: File not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+    delete:
+      operationId: deleteFile
+      tags: [files]
+      summary: Delete a file (admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: File deleted
+        "404":
+          description: File not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /files/{id}/download:
+    post:
+      operationId: trackDownload
+      tags: [files]
+      summary: Track a file download and increment counter
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Download tracked, returns updated download count
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DownloadResponse"
+        "404":
+          description: File not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /files/trending:
+    get:
+      operationId: getTrendingFiles
+      tags: [files]
+      summary: Get top trending files by download count
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: ["integer", "null"]
+      responses:
+        "200":
+          description: Trending files
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/File"
+
+  /files/recent:
+    get:
+      operationId: getRecentFiles
+      tags: [files]
+      summary: Get recently uploaded files
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: ["integer", "null"]
+      responses:
+        "200":
+          description: Recent files
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/File"
+
+  /bookmarks:
+    get:
+      operationId: listBookmarks
+      tags: [bookmarks]
+      summary: Get current user's bookmarks
+      responses:
+        "200":
+          description: User's bookmarks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BookmarkedFile"
+
+    post:
+      operationId: addBookmark
+      tags: [bookmarks]
+      summary: Bookmark a file
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddBookmarkBody"
+      responses:
+        "201":
+          description: Bookmark added
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Bookmark"
+        "409":
+          description: Already bookmarked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /bookmarks/{fileId}:
+    delete:
+      operationId: removeBookmark
+      tags: [bookmarks]
+      summary: Remove a bookmark
+      parameters:
+        - name: fileId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Bookmark removed
+        "404":
+          description: Bookmark not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /announcements:
+    get:
+      operationId: listAnnouncements
+      tags: [announcements]
+      summary: List all announcements
+      responses:
+        "200":
+          description: List of announcements
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Announcement"
+
+    post:
+      operationId: createAnnouncement
+      tags: [announcements]
+      summary: Create an announcement (admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAnnouncementBody"
+      responses:
+        "201":
+          description: Announcement created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Announcement"
+        "403":
+          description: Admin access required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /announcements/{id}:
+    patch:
+      operationId: updateAnnouncement
+      tags: [announcements]
+      summary: Update an announcement (admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateAnnouncementBody"
+      responses:
+        "200":
+          description: Announcement updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Announcement"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+    delete:
+      operationId: deleteAnnouncement
+      tags: [announcements]
+      summary: Delete an announcement (admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Announcement deleted
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /analytics/dashboard:
+    get:
+      operationId: getAdminDashboard
+      tags: [analytics]
+      summary: Get admin dashboard summary stats
+      responses:
+        "200":
+          description: Dashboard stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminDashboardStats"
+
+  /analytics/downloads-over-time:
+    get:
+      operationId: getDownloadsOverTime
+      tags: [analytics]
+      summary: Get download activity over time
+      parameters:
+        - name: days
+          in: query
+          schema:
+            type: ["integer", "null"]
+      responses:
+        "200":
+          description: Downloads over time data
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DownloadDataPoint"
+
+  /analytics/student-stats:
+    get:
+      operationId: getStudentStats
+      tags: [analytics]
+      summary: Get current student's stats
+      responses:
+        "200":
+          description: Student dashboard stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StudentStats"
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+
+    RegisterBody:
+      type: object
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+        password:
+          type: string
+        role:
+          type: string
+        studentId:
+          type: ["string", "null"]
+        adminCode:
+          type: ["string", "null"]
+      required:
+        - name
+        - email
+        - password
+        - role
+
+    LoginBody:
+      type: object
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+        role:
+          type: string
+      required:
+        - email
+        - password
+        - role
+
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+        role:
+          type: string
+        studentId:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+      required:
+        - id
+        - name
+        - email
+        - role
+        - createdAt
+
+    AuthResponse:
+      type: object
+      properties:
+        token:
+          type: string
+        user:
+          $ref: "#/components/schemas/User"
+      required:
+        - token
+        - user
+
+    File:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        subject:
+          type: string
+        unit:
+          type: ["integer", "null"]
+        fileType:
+          type: string
+        keywords:
+          type: ["string", "null"]
+        branch:
+          type: string
+        year:
+          type: string
+        semester:
+          type: string
+        driveLink:
+          type: string
+        uploadDate:
+          type: string
+        downloads:
+          type: integer
+        uploadedBy:
+          type: ["integer", "null"]
+      required:
+        - id
+        - title
+        - subject
+        - fileType
+        - branch
+        - year
+        - semester
+        - driveLink
+        - uploadDate
+        - downloads
+
+    FileListResponse:
+      type: object
+      properties:
+        files:
+          type: array
+          items:
+            $ref: "#/components/schemas/File"
+        total:
+          type: integer
+        page:
+          type: integer
+        totalPages:
+          type: integer
+      required:
+        - files
+        - total
+        - page
+        - totalPages
+
+    CreateFileBody:
+      type: object
+      properties:
+        title:
+          type: string
+        subject:
+          type: string
+        unit:
+          type: ["integer", "null"]
+        fileType:
+          type: string
+        keywords:
+          type: ["string", "null"]
+        branch:
+          type: string
+        year:
+          type: string
+        semester:
+          type: string
+        driveLink:
+          type: string
+      required:
+        - title
+        - subject
+        - fileType
+        - branch
+        - year
+        - semester
+        - driveLink
+
+    UpdateFileBody:
+      type: object
+      properties:
+        title:
+          type: ["string", "null"]
+        subject:
+          type: ["string", "null"]
+        unit:
+          type: ["integer", "null"]
+        fileType:
+          type: ["string", "null"]
+        keywords:
+          type: ["string", "null"]
+        branch:
+          type: ["string", "null"]
+        year:
+          type: ["string", "null"]
+        semester:
+          type: ["string", "null"]
+        driveLink:
+          type: ["string", "null"]
+
+    DownloadResponse:
+      type: object
+      properties:
+        downloads:
+          type: integer
+        driveLink:
+          type: string
+      required:
+        - downloads
+        - driveLink
+
+    Bookmark:
+      type: object
+      properties:
+        id:
+          type: integer
+        studentId:
+          type: integer
+        fileId:
+          type: integer
+        savedDate:
+          type: string
+      required:
+        - id
+        - studentId
+        - fileId
+        - savedDate
+
+    BookmarkedFile:
+      type: object
+      properties:
+        id:
+          type: integer
+        studentId:
+          type: integer
+        fileId:
+          type: integer
+        savedDate:
+          type: string
+        file:
+          $ref: "#/components/schemas/File"
+      required:
+        - id
+        - studentId
+        - fileId
+        - savedDate
+        - file
+
+    AddBookmarkBody:
+      type: object
+      properties:
+        fileId:
+          type: integer
+      required:
+        - fileId
+
+    Announcement:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+        priority:
+          type: string
+        datePosted:
+          type: string
+        postedBy:
+          type: ["integer", "null"]
+      required:
+        - id
+        - title
+        - description
+        - priority
+        - datePosted
+
+    CreateAnnouncementBody:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        priority:
+          type: string
+      required:
+        - title
+        - description
+        - priority
+
+    UpdateAnnouncementBody:
+      type: object
+      properties:
+        title:
+          type: ["string", "null"]
+        description:
+          type: ["string", "null"]
+        priority:
+          type: ["string", "null"]
+
+    AdminDashboardStats:
+      type: object
+      properties:
+        totalFiles:
+          type: integer
+        totalDownloads:
+          type: integer
+        downloadsToday:
+          type: integer
+        totalUsers:
+          type: integer
+        totalStudents:
+          type: integer
+        newFilesThisWeek:
+          type: integer
+        filesByType:
+          type: array
+          items:
+            $ref: "#/components/schemas/TypeCount"
+        topSubjects:
+          type: array
+          items:
+            $ref: "#/components/schemas/SubjectCount"
+      required:
+        - totalFiles
+        - totalDownloads
+        - downloadsToday
+        - totalUsers
+        - totalStudents
+        - newFilesThisWeek
+        - filesByType
+        - topSubjects
+
+    StudentStats:
+      type: object
+      properties:
+        totalDownloads:
+          type: integer
+        totalBookmarks:
+          type: integer
+        newFilesThisWeek:
+          type: integer
+      required:
+        - totalDownloads
+        - totalBookmarks
+        - newFilesThisWeek
+
+    TypeCount:
+      type: object
+      properties:
+        fileType:
+          type: string
+        count:
+          type: integer
+      required:
+        - fileType
+        - count
+
+    SubjectCount:
+      type: object
+      properties:
+        subject:
+          type: string
+        count:
+          type: integer
+      required:
+        - subject
+        - count
+
+    DownloadDataPoint:
+      type: object
+      properties:
+        date:
+          type: string
+        downloads:
+          type: integer
+      required:
+        - date
+        - downloads

@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "Academic Resource Hub"
+version = "1.0.0"
+id = "artifacts/academic-hub"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 20360
+
+[services.development]
+run = "pnpm --filter @workspace/academic-hub run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/academic-hub", "run", "build" ]
+publicDir = "artifacts/academic-hub/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "20360"
+BASE_PATH = "/"
